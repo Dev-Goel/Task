@@ -9,7 +9,6 @@ interface SendEmailOptions {
 }
 
 export async function sendEmail({ to, subject, text, attachmentPath }: SendEmailOptions) {
-  // 1️⃣ Configure transporter using SendGrid SMTP
   const transporter = nodemailer.createTransport({
     host: 'smtp.sendgrid.net',
     port: 587,
@@ -20,7 +19,6 @@ export async function sendEmail({ to, subject, text, attachmentPath }: SendEmail
     },
   });
 
-  // 2️⃣ Mail options
   const mailOptions: any = {
     from: 'goel13jan2003@gmail.com', 
     to,
@@ -37,7 +35,6 @@ export async function sendEmail({ to, subject, text, attachmentPath }: SendEmail
     ];
   }
 
-  // 3️⃣ Send email
   await transporter.sendMail(mailOptions);
   console.log(`Email sent to ${to}`);
 }

@@ -5,7 +5,7 @@ import { attachWsHandlers } from './wsHandler';
 import dotenv from 'dotenv';
 import path from 'path';
 import cors from 'cors';
-import { sendEmail } from './sendEmail'; // make sure you have this implemented
+import { sendEmail } from './sendEmail'; 
 
 dotenv.config();
 

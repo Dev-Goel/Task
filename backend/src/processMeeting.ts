@@ -8,7 +8,6 @@ const openai = new OpenAI({
   apiKey: "",
 });
 
-// Convert WebM → WAV (tolerates truncated/corrupted files)
 function convertWebmToWav(webmPath: string, wavPath: string) {
   try {
     execSync(`ffmpeg -y -err_detect ignore_err -i "${webmPath}" -ar 16000 -ac 1 "${wavPath}"`);
@@ -18,7 +17,6 @@ function convertWebmToWav(webmPath: string, wavPath: string) {
   }
 }
 
-// Get audio duration (in seconds)
 function getAudioDuration(wavPath: string) {
   try {
     const result = execSync(`ffprobe -i "${wavPath}" -show_entries format=duration -v quiet -of csv="p=0"`).toString();
@@ -28,7 +26,6 @@ function getAudioDuration(wavPath: string) {
   }
 }
 
-// Run diarization Python script safely
 function getSpeakerSegments(wavPath: string) {
   try {
     const output = execSync(`python3 src/diarize.py "${wavPath}"`).toString();
@@ -44,10 +41,8 @@ export async function processMeeting(meetingId: string) {
   const audioPath = path.join(meetingDir, `meeting-${meetingId}.webm`);
   const wavPath = path.join(meetingDir, `meeting-${meetingId}.wav`);
 
-  // 1️⃣ Convert audio to WAV
   convertWebmToWav(audioPath, wavPath);
 
-  // 2️⃣ Skip diarization if audio too short
   const duration = getAudioDuration(wavPath);
   let segments: any[] = [];
   if (duration < 1) {
@@ -57,14 +52,12 @@ export async function processMeeting(meetingId: string) {
     if (!segments.length) console.warn('No speaker segments found, skipping diarization.');
   }
 
-  // 3️⃣ Transcribe audio using Whisper
   const transcription = await openai.audio.transcriptions.create({
     file: fs.createReadStream(audioPath),
     model: 'whisper-1',
   });
   const transcriptText = transcription.text;
 
-  // 4️⃣ Map transcript to speakers (crude sequential mapping)
   const speakerTranscript = segments.length
     ? segments.map((seg, idx) => ({
         speaker: seg.speaker,
@@ -72,7 +65,6 @@ export async function processMeeting(meetingId: string) {
       }))
     : [{ speaker: 'Speaker 1', text: transcriptText }]; // fallback
 
-  // 5️⃣ Send speaker-labeled transcript to GPT-4
   const prompt = `
 You are a meeting summarizer.
 - Use the speaker labels provided
@@ -101,7 +93,6 @@ ${JSON.stringify(speakerTranscript)}
 
   const resultText = completion.choices[0].message?.content || '';
 
-  // 6️⃣ Extract JSON safely
   let summaryJson: any = {};
   try {
     const jsonMatch = resultText.match(/\{[\s\S]*\}$/);
@@ -112,7 +103,6 @@ ${JSON.stringify(speakerTranscript)}
     summaryJson = { error: 'Failed to parse LLM output', raw: resultText };
   }
 
-  // 7️⃣ Save summary
   fs.writeFileSync(
     path.join(meetingDir, 'summary.json'),
     JSON.stringify(summaryJson, null, 2)
